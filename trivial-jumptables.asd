@@ -5,7 +5,7 @@
   ;; See the UNLICENSE file for details.
   :license "Public Domain"
 
-  :description "Provides efficient O(1) jumptables on supported Common Lisp implementations and falls back to O(log(n)) on others."
+  :description "Provides efficient O(1) jump tables on supported Common Lisp implementations and falls back to O(log(n)) on others."
 
   :depends-on ()
 

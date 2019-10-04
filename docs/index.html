@@ -39,7 +39,7 @@
 
       </div>
 
-      <p id="last-updated"><span>This page was last updated on </span><time datetime="2018-11-29">29 november 2018</time><span>.</span></p>
+      <p id="last-updated"><span>This page was last updated on </span><time datetime="2019-10-04">4 october 2019</time><span>.</span></p>
 
     </nav>
 
@@ -86,7 +86,7 @@
 
       <section id="introduction">
 
-        <p><dfn><code class="relevant">trivial-jumptables</code></dfn> provides efficient O(1) jumptables on supported<br />Common Lisp implementations and falls back to O(log(n)) on others.</p>
+        <p><dfn><code class="relevant">trivial-jumptables</code></dfn> provides efficient O(1) jump tables on supported<br />Common Lisp implementations and falls back to O(log(n)) on others.</p>
 
       </section>
 
@@ -108,7 +108,7 @@
           </span>
         </h1>
 
-        <p>If you need a jumptable in Common Lisp, the naive way is to just expand to the equivalent <a href="http://www.lispworks.com/documentation/HyperSpec/Body/m_case_.htm" target="_blank">ecase</a> form:</p>
+        <p>If you need a jump table in Common Lisp, the naive way is to just expand to the equivalent <a href="http://www.lispworks.com/documentation/HyperSpec/Body/m_case_.htm" target="_blank">ecase</a> form:</p>
 
         <div class="scroll">
 
@@ -121,7 +121,7 @@
 
         <p>Unfortunately, in most Common Lisp implementations, this simply expands to a linear series of checks for each value in turn, which is really not great if there are more than just a few cases.</p>
 
-        <p>This library provides <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code>, which is much more efficient. On <a href="https://ccl.clozure.com/" target="_blank">CCL</a>, it actually expands to an <code>ecase</code> which expands to a bunch of <code>if</code>s, but a later stage of compilation actually detects the repeated comparisons on the index variable and converts them into a nice jumptable. So <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code> is ultimately O(1) on CCL. On other Common Lisp implementations, <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code> expands to a binary search implemented as a tree of <code>if</code> forms, offering still vastly superior performance compared to the typical <code>ecase</code> expansion (if there are more than a few cases). But this really ought to be O(1), so help is requested to add such support for other Common Lisp implementations. Please <a href="https://github.com/Hexstream/trivial-jumptables/issues" target="_blank">open an issue or pull request</a> if you know how to add support for this on other Common Lisp implementations.</p>
+        <p>This library provides <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code>, which is much more efficient. On <a href="https://ccl.clozure.com/" target="_blank">CCL</a>, it actually expands to an <code>ecase</code> which expands to a bunch of <code>if</code>s, but a later stage of compilation actually detects the repeated comparisons on the index variable and converts them into a nice jump table. So <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code> is ultimately O(1) on CCL. On other Common Lisp implementations, <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code> expands to a binary search implemented as a tree of <code>if</code> forms, offering still vastly superior performance compared to the typical <code>ecase</code> expansion (if there are more than a few cases). But this really ought to be O(1), so help is requested to add such support for other Common Lisp implementations. Please <a href="https://github.com/Hexstream/trivial-jumptables/issues" target="_blank">open an issue or pull request</a> if you know how to add support for this on other Common Lisp implementations.</p>
 
         <p>You can quickly get some rough test results like this:</p>
 
@@ -152,7 +152,7 @@
 
 <span class="comment">;;You can roughly compare performance across various <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code> backends
 ;;on the same or different Common Lisp implementations with this.
-;;The default is a million executions of a 1000 entries jumptable.</span>
+;;The default is a million executions of a 1000 entries jump table.</span>
 (jumpcase_tests:benchmark)
 
 <span class="comment">;;You might like to compare the results of these.</span>
@@ -316,7 +316,7 @@
                 <p>The <var>case-count</var> is simply the number of <var>cases</var>, and is passed around to avoid having to recompute it through the various stages of expansion. <code><var>case-count</var> == (length <var>cases</var>)</code></p>
                 <p>The consequences are undefined if any function that accepts <var>cases</var> and <var>case-count</var> arguments is passed an inaccurate <var>case-count</var>.</p>
                 <p>The functions <code class="relevant"><a href="#dictionary_expand-ejumpcase-linear">jumpcase:expand-ejumpcase-linear</a></code> and <code class="relevant"><a href="#dictionary_expand-ejumpcase-logarithmic">jumpcase:expand-ejumpcase-logarithmic</a></code> are ejumpcase expanders, as well as any function returned by <code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code>.</p>
-                <p>On supported Common Lisp implementations, the initial value of this variable is a function that returns an <var>expansion</var> that takes advantage of an implementation-specific O(1) jumptable primitive.<br />On other implementations, the default value is the result of <code>(<code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code> '<code class="relevant"><a href="#dictionary_expand-ejumpcase-logarithmic">jumpcase:expand-ejumpcase-logarithmic</a></code>)</code>.</p>
+                <p>On supported Common Lisp implementations, the initial value of this variable is a function that returns an <var>expansion</var> that takes advantage of an implementation-specific O(1) jump table primitive.<br />On other implementations, the default value is the result of <code>(<code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code> '<code class="relevant"><a href="#dictionary_expand-ejumpcase-logarithmic">jumpcase:expand-ejumpcase-logarithmic</a></code>)</code>.</p>
               </section>
 
             </article>
