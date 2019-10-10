@@ -4,6 +4,9 @@ Project's home: https://www.hexstreamsoft.com/libraries/trivial-jumptables/
 trivial-jumptables provides efficient O(1) jump tables on supported
 Common Lisp implementations and falls back to O(log(n)) on others.
 
+Important optimizations are performed even on unsupported implementations,
+notably "vectorization" which allows O(1) dispatch if all cases are constant.
+
 
 This library is in the Public Domain.
 See the UNLICENSE file for details.

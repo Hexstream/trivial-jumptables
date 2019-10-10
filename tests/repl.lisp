@@ -28,19 +28,31 @@
             (lambda ()
               (mapc #'funcall (nreverse cleanups))))))
 
-(defun disassemble-example (&key (n 5) (case-generator *example-case-generator*) (print-form t)
-                              ((:ejumpcase-expander jumpcase:*ejumpcase-expander*) jumpcase:*ejumpcase-expander*))
+(defun %print-settings ()
+  (format t "~2%Using settings:~%~S"
+          `((jumpcase:*ejumpcase-expander* ,jumpcase:*ejumpcase-expander*)
+            (jumpcase:*precompute-constant-index* ,jumpcase:*precompute-constant-index*)
+            (jumpcase:*preselect-case* ,jumpcase:*preselect-case*)
+            (jumpcase:*type-annotate-index-form* ,jumpcase:*type-annotate-index-form*)
+            (jumpcase:*vectorize* ,jumpcase:*vectorize*))))
+
+(defun disassemble-example (&key (n 5) (case-generator *example-case-generator*) (print-form t) (print-settings t)
+                              ((:ejumpcase-expander jumpcase:*ejumpcase-expander*) jumpcase:*ejumpcase-expander*)
+                              ((:vectorize jumpcase:*vectorize*) nil))
   (let ((*package* (find-package '#:trivial-jumptables_tests)))
     (multiple-value-bind (lambda-form cleanup)
         (%generate-example-lambda n case-generator)
       (disassemble lambda-form)
       (when print-form
         (format t "~%Above is the disassembly for form:~%~S" lambda-form))
+      (when print-settings
+        (%print-settings))
       (funcall cleanup)
       (values))))
 
-(defun benchmark (&key (n 1000) (repeat 1000000) (case-generator *example-case-generator*) (print-form nil)
-                    ((:ejumpcase-expander jumpcase:*ejumpcase-expander*) jumpcase:*ejumpcase-expander*))
+(defun benchmark (&key (n 1000) (repeat 1000000) (case-generator *example-case-generator*) (print-form nil) (print-settings t)
+                    ((:ejumpcase-expander jumpcase:*ejumpcase-expander*) jumpcase:*ejumpcase-expander*)
+                    ((:vectorize jumpcase:*vectorize*) nil))
   (format t "Preparing to execute a ~A entries jumptable ~A times."
           n repeat)
   (let ((*package* (find-package '#:trivial-jumptables_tests)))
@@ -53,5 +65,7 @@
                 (funcall compiled (mod i n)))))
       (when print-form
         (format t "~%Above is the benchmark test results for form:~%~S" lambda-form))
+      (when print-settings
+        (%print-settings))
       (funcall cleanup)
       (values))))

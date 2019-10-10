@@ -51,5 +51,5 @@
 
 (defvar *%initial-ejumpcase-expander* jumpcase:*ejumpcase-expander*)
 
-(defmacro ejumpcase (index &body cases)
-  (funcall jumpcase:*ejumpcase-expander* index cases (length cases)))
+(defmacro ejumpcase (index &body cases &environment env)
+  (let ((jumpcase:*environment* env)) (funcall jumpcase:*ejumpcase-expander* index cases (length cases))))

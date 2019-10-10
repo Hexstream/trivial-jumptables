@@ -7,26 +7,28 @@
 
 (cl:in-package #:trivial-jumptables_tests)
 
-(defmacro run-tests (&body body)
+(defmacro run-tests ((&key (vectorize '(nil)) (supplementals t)) &body body)
   ;; This following form makes tests super slow.
-  (setf body (append body (let ((casecount 100)
-                                (cases nil))
-                            (dotimes (i casecount)
-                              (push (- i) cases))
-                            (setf cases (nreverse cases))
-                            (list `(is equal ',cases
-                                       (let ((results nil))
-                                         (flet ((compute (index)
-                                                  (ejumpcase index
-                                                    ,@cases)))
-                                           (dotimes (i ,casecount)
-                                             (push (compute i) results))
-                                           (nreverse results))))))))
-  (flet ((compile-it (expander precompute-constant-index preselect-case type-annotate-index-form)
+  (when supplementals
+    (setf body (append body (let ((casecount 100)
+                                  (cases nil))
+                              (dotimes (i casecount)
+                                (push (- i) cases))
+                              (setf cases (nreverse cases))
+                              (list `(is equal ',cases
+                                         (let ((results nil))
+                                           (flet ((compute (index)
+                                                    (ejumpcase index
+                                                      ,@cases)))
+                                             (dotimes (i ,casecount)
+                                               (push (compute i) results))
+                                             (nreverse results)))))))))
+  (flet ((compile-it (expander precompute-constant-index preselect-case type-annotate-index-form vectorize)
            (let ((settings `((jumpcase:*ejumpcase-expander* ,expander)
                              (jumpcase:*precompute-constant-index* ,precompute-constant-index)
                              (jumpcase:*preselect-case* ,preselect-case)
-                             (jumpcase:*type-annotate-index-form* ,type-annotate-index-form))))
+                             (jumpcase:*type-annotate-index-form* ,type-annotate-index-form)
+                             (jumpcase:*vectorize* ,vectorize))))
              `(progn
                 (format t "~%Now running tests for settings: ~S" ',settings)
                 (let ,settings
@@ -41,13 +43,18 @@
                                       (jumpcase:make-standard-optimizations-wrapper
                                        'jumpcase:expand-ejumpcase-logarithmic)
                                       jumpcase::*%initial-ejumpcase-expander*)
-                                    '(t nil) '(t nil) '(t nil))))))
+                                    '(t nil) '(t nil) '(t nil) vectorize)))))
 
 (defun %wat ()
   (error "Wat??"))
 
+(declaim (notinline non-constant))
+
+(defun non-constant (value)
+  value)
+
 (define-test "main"
-  (run-tests
+  (run-tests ()
     (fail (ejumpcase 0) 'type-error)
     (is eq 'zero
         (ejumpcase 0
@@ -99,4 +106,47 @@
           'seven
           'eight
           'nine
-          'ten))))
+          'ten)))
+  (run-tests (:vectorize (t) :supplementals nil)
+    (is eq 'two
+        (ejumpcase 2
+          'zero
+          'one
+          'two
+          'three))
+    (is eq 'two
+        (ejumpcase 2
+          'zero
+          (non-constant 'one)
+          'two
+          'three))
+    (is eq 'two
+        (ejumpcase 2
+          'zero
+          'one
+          (non-constant 'two)
+          'three))
+    (is eq 'two
+        (ejumpcase 2
+          'zero
+          'one
+          'two
+          (non-constant 'three)))
+    (is eq 'two
+        (ejumpcase 2
+          'zero
+          'one
+          'two
+          (non-constant 'three)))
+    (is eq 'two
+        (ejumpcase 2
+          'zero
+          (non-constant 'one)
+          'two
+          (non-constant 'three)))
+    (is eq 'two
+        (ejumpcase 2
+          (non-constant 'zero)
+          (non-constant 'one)
+          (non-constant 'two)
+          (non-constant 'three)))))

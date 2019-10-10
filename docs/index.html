@@ -39,7 +39,7 @@
 
       </div>
 
-      <p id="last-updated"><span>This page was last updated on </span><time datetime="2019-10-04">4 october 2019</time><span>.</span></p>
+      <p id="last-updated"><span>This page was last updated on </span><time datetime="2019-10-09">9 october 2019</time><span>.</span></p>
 
     </nav>
 
@@ -87,6 +87,7 @@
       <section id="introduction">
 
         <p><dfn><code class="relevant">trivial-jumptables</code></dfn> provides efficient O(1) jump tables on supported<br />Common Lisp implementations and falls back to O(log(n)) on others.</p>
+        <p>Important <a href="#dictionary_internals-api_optimization">optimizations</a> are performed even on unsupported implementations,<br />notably "<a href="#dictionary_internals-api_optimization_vectorization">vectorization</a>" which allows O(1) dispatch if all cases are constant.</p>
 
       </section>
 
@@ -122,6 +123,8 @@
         <p>Unfortunately, in most Common Lisp implementations, this simply expands to a linear series of checks for each value in turn, which is really not great if there are more than just a few cases.</p>
 
         <p>This library provides <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code>, which is much more efficient. On <a href="https://ccl.clozure.com/" target="_blank">CCL</a>, it actually expands to an <code>ecase</code> which expands to a bunch of <code>if</code>s, but a later stage of compilation actually detects the repeated comparisons on the index variable and converts them into a nice jump table. So <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code> is ultimately O(1) on CCL. On other Common Lisp implementations, <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code> expands to a binary search implemented as a tree of <code>if</code> forms, offering still vastly superior performance compared to the typical <code>ecase</code> expansion (if there are more than a few cases). But this really ought to be O(1), so help is requested to add such support for other Common Lisp implementations. Please <a href="https://github.com/Hexstream/trivial-jumptables/issues" target="_blank">open an issue or pull request</a> if you know how to add support for this on other Common Lisp implementations.</p>
+
+        <p>Note that since version 1.1, <em>when all cases are constant</em> we can achieve O(1) dispatch even on unsupported implementations, thanks to <a href="#dictionary_internals-api_optimization_vectorization">vectorization</a>. We can also achieve <em>nearly</em> O(1) dispatch if <em>most</em> cases are constant.</p>
 
         <p>You can quickly get some rough test results like this:</p>
 
@@ -226,13 +229,14 @@
 
             <h1><span class="type">Macro</span> <span class="name self">ejumpcase</span></h1>
 
-            <p class="args-and-retvals"><var>index-form</var> &amp;body <var>cases</var> =&gt; <var>results</var></p>
+            <p class="args-and-retvals"><var>index-form</var> &amp;body <var>cases</var> &amp;environment <var>env</var> =&gt; <var>results</var></p>
 
             <section class="arguments-and-values">
               <h1>Arguments and Values</h1>
               <ul>
                 <li><var>index-form</var> -- A form.</li>
                 <li><var>cases</var> -- A list of forms.</li>
+                <li><var>env</var> -- An environment object.</li>
                 <li><var>results</var> -- The values returned by the matching <var>case</var> form.</li>
               </ul>
             </section>
@@ -258,7 +262,7 @@
 
               </div>
 
-              <p>To determine its expansion, <code class="relevant">ejumpcase</code> simply calls <code class="relevant"><a href="#dictionary_*ejumpcase-expander*">jumpcase:*ejumpcase-expander*</a></code> with <var>index-form</var>, <var>cases</var> and the number of <var>cases</var>.</p>
+              <p>To determine its expansion, <code class="relevant">ejumpcase</code> simply binds <code class="relevant"><a href="#dictionary_*environment*">jumpcase:*environment*</a></code> to <var>env</var> then calls <code class="relevant"><a href="#dictionary_*ejumpcase-expander*">jumpcase:*ejumpcase-expander*</a></code> with <var>index-form</var>, <var>cases</var> and the number of <var>cases</var>.</p>
 
             </section>
 
@@ -280,114 +284,159 @@
 
           <nav class="tabs">
             <ul>
-              <li><a href="#dictionary_*ejumpcase-expander*"><span class="type">Variable</span> <code>*ejumpcase-expander*</code></a></li>
-              <li><a href="#dictionary_expand-ejumpcase-linear"><span class="type">Function</span> <code>expand-ejumpcase-linear</code></a></li>
-              <li><a href="#dictionary_expand-ejumpcase-logarithmic"><span class="type">Function</span> <code>expand-ejumpcase-logarithmic</code></a></li>
-              <li><a href="#dictionary_index"><span class="type">Type specifier</span> <code>index</code></a></li>
-              <li><a href="#dictionary_*type-annotate-index-form*"><span class="type">Variable</span> <code>*type-annotate-index-form*</code></a></li>
-              <li><a href="#dictionary_maybe-type-annotate-index-form"><span class="type">Function</span> <code>maybe-type-annotate-index-form</code></a></li>
-
-              <li><a href="#dictionary_*precompute-constant-index*"><span class="type">Variable</span> <code>*precompute-constant-index*</code></a></li>
-              <li><a href="#dictionary_*preselect-case*"><span class="type">Variable</span> <code>*preselect-case*</code></a></li>
-              <li><a href="#dictionary_make-standard-optimizations-wrapper"><span class="type">Function</span> <code>make-standard-optimizations-wrapper</code></a></li>
+              <li><a href="#dictionary_internals-api_expansion">Expansion</a></li>
+              <li><a href="#dictionary_internals-api_optimization">Optimization</a></li>
             </ul>
           </nav>
 
-          <section id="dictionary_*ejumpcase-expander*">
+          <section id="dictionary_internals-api_expansion">
 
             <h1 class="breadcrumbs-bar">
               <span class="section-relative-nav">
-                <a href="#dictionary_*ejumpcase-expander*" class="anchor">⚓</a>
+                <a href="#dictionary_internals-api_expansion" class="anchor">⚓</a>
               </span>
               <span class="breadcrumbs">
-                <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
-                <span class="crumb"><span class="s"> » </span><a class="here">*ejumpcase-expander*</a></span>
+                <a href="#dictionary">Dictionary</a>
+                <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api">Internals API</a></span>
+                <span class="crumb"><span class="s"> » </span><a class="here">Expansion</a></span>
               </span>
             </h1>
 
-            <article class="variable definition">
+            <nav class="tabs">
+              <ul>
+                <li><a href="#dictionary_*environment*"><span class="type">Variable</span> <code>*environment*</code></a></li>
+                <li><a href="#dictionary_*ejumpcase-expander*"><span class="type">Variable</span> <code>*ejumpcase-expander*</code></a></li>
+                <li><a href="#dictionary_expand-ejumpcase-linear"><span class="type">Function</span> <code>expand-ejumpcase-linear</code></a></li>
+                <li><a href="#dictionary_expand-ejumpcase-logarithmic"><span class="type">Function</span> <code>expand-ejumpcase-logarithmic</code></a></li>
+              </ul>
+            </nav>
 
-              <h1><span class="type">Variable</span> <span class="name self">jumpcase:*ejumpcase-expander*</span></h1>
+            <section id="dictionary_*environment*">
 
-              <section class="description">
-                <h1>Description</h1>
-                <p>The value of this variable is a function designator that <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code> calls to determine its expansion. Suitable values for this variable are called <dfn>ejumpcase expanders</dfn>.</p>
-                <p>ejumpcase expanders have 3 required parameters, <var>index-form</var>, <var>cases</var> and <var>case-count</var>, and return <var>expansion</var>.</p>
-                <p>The <var>case-count</var> is simply the number of <var>cases</var>, and is passed around to avoid having to recompute it through the various stages of expansion. <code><var>case-count</var> == (length <var>cases</var>)</code></p>
-                <p>The consequences are undefined if any function that accepts <var>cases</var> and <var>case-count</var> arguments is passed an inaccurate <var>case-count</var>.</p>
-                <p>The functions <code class="relevant"><a href="#dictionary_expand-ejumpcase-linear">jumpcase:expand-ejumpcase-linear</a></code> and <code class="relevant"><a href="#dictionary_expand-ejumpcase-logarithmic">jumpcase:expand-ejumpcase-logarithmic</a></code> are ejumpcase expanders, as well as any function returned by <code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code>.</p>
-                <p>On supported Common Lisp implementations, the initial value of this variable is a function that returns an <var>expansion</var> that takes advantage of an implementation-specific O(1) jump table primitive.<br />On other implementations, the default value is the result of <code>(<code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code> '<code class="relevant"><a href="#dictionary_expand-ejumpcase-logarithmic">jumpcase:expand-ejumpcase-logarithmic</a></code>)</code>.</p>
-              </section>
+              <h1 class="breadcrumbs-bar">
+                <span class="section-relative-nav">
+                  <a href="#dictionary_*environment*" class="anchor">⚓</a>
+                </span>
+                <span class="breadcrumbs">
+                  <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
+                  <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_expansion">Expansion</a></span>
+                  <span class="crumb"><span class="s"> » </span><a class="here">*environment*</a></span>
+                </span>
+              </h1>
 
-            </article>
+              <article class="variable definition">
 
-          </section>
+                <h1><span class="type">Variable</span> <span class="name self">jumpcase:*environment*</span></h1>
 
-          <section id="dictionary_expand-ejumpcase-linear">
+                <section class="description">
+                  <h1>Description</h1>
+                  <p>An <a href="http://www.lispworks.com/documentation/HyperSpec/Body/03_aad.htm" target="_blank">environment object</a>. The initial value is <code>nil</code>, designating the <a href="http://www.lispworks.com/documentation/HyperSpec/Body/03_aaca.htm" target="_blank">null lexical environment</a>.</p>
+                  <p>Bound by <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code> before calling <code class="relevant"><a href="#dictionary_*ejumpcase-expander*">jumpcase:*ejumpcase-expander*</a></code>.</p>
+                  <p>Very few <a href="#dictionary_*ejumpcase-expander*">ejumpcase expanders</a> need to inspect this value, so it's nice not to have to pass it explicitly through all of them.</p>
+                </section>
 
-            <h1 class="breadcrumbs-bar">
-              <span class="section-relative-nav">
-                <a href="#dictionary_expand-ejumpcase-linear" class="anchor">⚓</a>
-              </span>
-              <span class="breadcrumbs">
-                <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
-                <span class="crumb"><span class="s"> » </span><a class="here">expand-ejumpcase-linear</a></span>
-              </span>
-            </h1>
+              </article>
 
-            <article class="function definition">
+            </section>
 
-              <h1><span class="type">Function</span> <span class="name self">jumpcase:expand-ejumpcase-linear</span></h1>
+            <section id="dictionary_*ejumpcase-expander*">
 
-              <p class="args-and-retvals"><var>index</var> <var>cases</var> <var>case-count</var> =&gt; <var>expansion</var></p>
+              <h1 class="breadcrumbs-bar">
+                <span class="section-relative-nav">
+                  <a href="#dictionary_*ejumpcase-expander*" class="anchor">⚓</a>
+                </span>
+                <span class="breadcrumbs">
+                  <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
+                  <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_expansion">Expansion</a></span>
+                  <span class="crumb"><span class="s"> » </span><a class="here">*ejumpcase-expander*</a></span>
+                </span>
+              </h1>
 
-              <section class="description">
-                <h1>Description</h1>
-                <p>This <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a> simply expands to an <a href="http://www.lispworks.com/documentation/HyperSpec/Body/m_case_.htm" target="_blank">ecase</a> form.</p>
+              <article class="variable definition">
 
-                <div class="scroll">
+                <h1><span class="type">Variable</span> <span class="name self">jumpcase:*ejumpcase-expander*</span></h1>
 
-                  <pre class="example"><code class="common-lisp">(let ((<code class="relevant"><a href="#dictionary_*type-annotate-index-form*">jumpcase:*type-annotate-index-form*</a></code> nil))
+                <section class="description">
+                  <h1>Description</h1>
+                  <p>The value of this variable is a function designator that <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code> calls to determine its expansion. Suitable values for this variable are called <dfn>ejumpcase expanders</dfn>.</p>
+                  <p>ejumpcase expanders have 3 required parameters, <var>index-form</var>, <var>cases</var> and <var>case-count</var>, and return <var>expansion</var>. They also receive an environment object through the <code class="relevant"><a href="#dictionary_*environment*">jumpcase:*environment*</a></code> variable.</p>
+                  <p>The <var>case-count</var> is simply the number of <var>cases</var>, and is passed around to avoid having to recompute it through the various stages of expansion. <code><var>case-count</var> == (length <var>cases</var>)</code></p>
+                  <p>The consequences are undefined if any function that accepts <var>cases</var> and <var>case-count</var> arguments is passed an inaccurate <var>case-count</var>.</p>
+                  <p>The functions <code class="relevant"><a href="#dictionary_expand-ejumpcase-linear">jumpcase:expand-ejumpcase-linear</a></code> and <code class="relevant"><a href="#dictionary_expand-ejumpcase-logarithmic">jumpcase:expand-ejumpcase-logarithmic</a></code> are ejumpcase expanders, as well as any function returned by <code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code> or <code class="relevant"><a href="#dictionary_make-standard-vectorizing-wrapper">jumpcase:make-standard-vectorizing-wrapper</a></code>.</p>
+                  <p>On supported Common Lisp implementations, the initial value of this variable is a function that returns an <var>expansion</var> that takes advantage of an implementation-specific O(1) jump table primitive.<br />On other implementations, the default value is the result of <code>(<code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code> '<code class="relevant"><a href="#dictionary_expand-ejumpcase-logarithmic">jumpcase:expand-ejumpcase-logarithmic</a></code>)</code>.</p>
+                </section>
+
+              </article>
+
+            </section>
+
+            <section id="dictionary_expand-ejumpcase-linear">
+
+              <h1 class="breadcrumbs-bar">
+                <span class="section-relative-nav">
+                  <a href="#dictionary_expand-ejumpcase-linear" class="anchor">⚓</a>
+                </span>
+                <span class="breadcrumbs">
+                  <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
+                  <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_expansion">Expansion</a></span>
+                  <span class="crumb"><span class="s"> » </span><a class="here">expand-ejumpcase-linear</a></span>
+                </span>
+              </h1>
+
+              <article class="function definition">
+
+                <h1><span class="type">Function</span> <span class="name self">jumpcase:expand-ejumpcase-linear</span></h1>
+
+                <p class="args-and-retvals"><var>index</var> <var>cases</var> <var>case-count</var> =&gt; <var>expansion</var></p>
+
+                <section class="description">
+                  <h1>Description</h1>
+                  <p>This <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a> simply expands to an <a href="http://www.lispworks.com/documentation/HyperSpec/Body/m_case_.htm" target="_blank">ecase</a> form.</p>
+
+                  <div class="scroll">
+
+                    <pre class="example"><code class="common-lisp">(let ((<code class="relevant"><a href="#dictionary_*type-annotate-index-form*">jumpcase:*type-annotate-index-form*</a></code> nil))
   (<code class="relevant">jumpcase:expand-ejumpcase-linear</code> 'my-index '(foo bar baz) 3))
 =&gt;
 (ecase my-index (0 foo) (1 bar) (2 baz))</code></pre>
-                </div>
+                  </div>
 
-              </section>
+                </section>
 
-            </article>
+              </article>
 
-          </section>
+            </section>
 
-          <section id="dictionary_expand-ejumpcase-logarithmic">
+            <section id="dictionary_expand-ejumpcase-logarithmic">
 
-            <h1 class="breadcrumbs-bar">
-              <span class="section-relative-nav">
-                <a href="#dictionary_expand-ejumpcase-logarithmic" class="anchor">⚓</a>
-              </span>
-              <span class="breadcrumbs">
-                <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
-                <span class="crumb"><span class="s"> » </span><a class="here">expand-ejumpcase-logarithmic</a></span>
-              </span>
-            </h1>
+              <h1 class="breadcrumbs-bar">
+                <span class="section-relative-nav">
+                  <a href="#dictionary_expand-ejumpcase-logarithmic" class="anchor">⚓</a>
+                </span>
+                <span class="breadcrumbs">
+                  <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
+                  <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_expansion">Expansion</a></span>
+                  <span class="crumb"><span class="s"> » </span><a class="here">expand-ejumpcase-logarithmic</a></span>
+                </span>
+              </h1>
 
-            <article class="function definition">
+              <article class="function definition">
 
-              <h1><span class="type">Function</span> <span class="name self">jumpcase:expand-ejumpcase-logarithmic</span></h1>
+                <h1><span class="type">Function</span> <span class="name self">jumpcase:expand-ejumpcase-logarithmic</span></h1>
 
-              <p class="args-and-retvals"><var>index</var> <var>cases</var> <var>case-count</var> =&gt; <var>expansion</var></p>
+                <p class="args-and-retvals"><var>index</var> <var>cases</var> <var>case-count</var> =&gt; <var>expansion</var></p>
 
-              <section class="description">
-                <h1>Description</h1>
-                <p>This <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a> returns an <var>expansion</var> that implements a binary search with a tree of <a href="http://www.lispworks.com/documentation/HyperSpec/Body/s_if.htm" target="_blank">if</a> forms for drastically improved performance over <code class="relevant"><a href="#dictionary_expand-ejumpcase-linear">jumpcase:expand-ejumpcase-linear</a></code> when there are more than just a few <var>cases</var>.</p>
+                <section class="description">
+                  <h1>Description</h1>
+                  <p>This <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a> returns an <var>expansion</var> that implements a binary search with a tree of <a href="http://www.lispworks.com/documentation/HyperSpec/Body/s_if.htm" target="_blank">if</a> forms for drastically improved performance over <code class="relevant"><a href="#dictionary_expand-ejumpcase-linear">jumpcase:expand-ejumpcase-linear</a></code> when there are more than just a few <var>cases</var>.</p>
 
-                <div class="scroll">
+                  <div class="scroll">
 
-                  <pre class="example"><code class="common-lisp">(jumpcase:expand-ejumpcase-logarithmic
+                    <pre class="example"><code class="common-lisp">(jumpcase:expand-ejumpcase-logarithmic
  'my-index '(:zero :one :two :three :four :five :six :seven) 8)
 =&gt;
 (let ((#:index579 my-index))
-  (if (typep #:index579 '(<code class="relevant"><a href="#dictionary_index">trivial-jumptables:index</a></code> 8))
+  (if (typep #:index579 '(<code class="relevant"><a href="#dictionary_index">jumpcase:index</a></code> 8))
       (if (&lt; #:index579 4)
           (if (&lt; #:index579 2)
               (if (&lt; #:index579 1)
@@ -404,202 +453,460 @@
                   :six
                   :seven)))
       (error 'type-error :datum #:index579 :expected-type
-             '(<code class="relevant"><a href="#dictionary_index">trivial-jumptables:index</a></code> 8))))</code></pre>
-                </div>
+             '(<code class="relevant"><a href="#dictionary_index">jumpcase:index</a></code> 8))))</code></pre>
+                  </div>
 
-              </section>
+                </section>
 
-            </article>
+              </article>
+
+            </section>
+
+            <nav class="end-of-section-indicator">
+              <a href="#dictionary_internals-api_expansion">
+                "<span>Expansion</span>" end.
+              </a>
+            </nav>
 
           </section>
 
-          <section id="dictionary_index">
+          <section id="dictionary_internals-api_optimization">
 
             <h1 class="breadcrumbs-bar">
               <span class="section-relative-nav">
-                <a href="#dictionary_index" class="anchor">⚓</a>
+                <a href="#dictionary_internals-api_optimization" class="anchor">⚓</a>
               </span>
               <span class="breadcrumbs">
-                <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
-                <span class="crumb"><span class="s"> » </span><a class="here">index</a></span>
+                <a href="#dictionary">Dictionary</a>
+                <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api">Internals API</a></span>
+                <span class="crumb"><span class="s"> » </span><a class="here">Optimization</a></span>
               </span>
             </h1>
 
-            <article class="type-specifier definition">
+            <nav class="tabs">
+              <ul>
+                <li><a href="#dictionary_index"><span class="type">Type specifier</span> <code>index</code></a></li>
+                <li><a href="#dictionary_*type-annotate-index-form*"><span class="type">Variable</span> <code>*type-annotate-index-form*</code></a></li>
+                <li><a href="#dictionary_maybe-type-annotate-index-form"><span class="type">Function</span> <code>maybe-type-annotate-index-form</code></a></li>
 
-              <h1><span class="type">Type specifier</span> <span class="name self">jumpcase:index</span></h1>
+                <li><a href="#dictionary_*precompute-constant-index*"><span class="type">Variable</span> <code>*precompute-constant-index*</code></a></li>
+                <li><a href="#dictionary_*preselect-case*"><span class="type">Variable</span> <code>*preselect-case*</code></a></li>
+                <li><a href="#dictionary_make-standard-optimizations-wrapper"><span class="type">Function</span> <code>make-standard-optimizations-wrapper</code></a></li>
+                <li><a href="#dictionary_internals-api_optimization_vectorization">Vectorization</a></li>
+              </ul>
+            </nav>
 
-              <p class="args-and-retvals"><var>case-count</var></p>
+            <section id="dictionary_index">
 
-              <section class="arguments-and-values">
-                <h1>Arguments and Values</h1>
-                <ul>
-                  <li><var>case-count</var> -- An integer. The number of cases.</li>
-                </ul>
+              <h1 class="breadcrumbs-bar">
+                <span class="section-relative-nav">
+                  <a href="#dictionary_index" class="anchor">⚓</a>
+                </span>
+                <span class="breadcrumbs">
+                  <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
+                  <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_optimization">Optimization</a></span>
+                  <span class="crumb"><span class="s"> » </span><a class="here">index</a></span>
+                </span>
+              </h1>
+
+              <article class="type-specifier definition">
+
+                <h1><span class="type">Type specifier</span> <span class="name self">jumpcase:index</span></h1>
+
+                <p class="args-and-retvals"><var>case-count</var></p>
+
+                <section class="arguments-and-values">
+                  <h1>Arguments and Values</h1>
+                  <ul>
+                    <li><var>case-count</var> -- An integer. The number of cases.</li>
+                  </ul>
+                </section>
+
+                <section class="description">
+                  <h1>Description</h1>
+                  <p>A type <code>(<code class="relevant">jumpcase:index</code> <var>case-count</var>)</code> expands to type <code>(<a href="http://www.lispworks.com/documentation/HyperSpec/Body/t_intege.htm" target="_blank">integer</a> 0 (<var>case-count</var>))</code>.</p>
+                </section>
+
+              </article>
+
+            </section>
+
+            <section id="dictionary_*type-annotate-index-form*">
+
+              <h1 class="breadcrumbs-bar">
+                <span class="section-relative-nav">
+                  <a href="#dictionary_*type-annotate-index-form*" class="anchor">⚓</a>
+                </span>
+                <span class="breadcrumbs">
+                  <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
+                  <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_optimization">Optimization</a></span>
+                  <span class="crumb"><span class="s"> » </span><a class="here">*type-annotate-index-form*</a></span>
+                </span>
+              </h1>
+
+              <article class="variable definition">
+
+                <h1><span class="type">Variable</span> <span class="name self">jumpcase:*type-annotate-index-form*</span></h1>
+
+                <section class="description">
+                  <h1>Description</h1>
+                  <p>This generalized boolean, which defaults to true, indicates whether or not <code class="relevant"><a href="#dictionary_maybe-type-annotate-index-form">jumpcase:maybe-type-annotate-index-form</a></code> should annotate its <var>index-form</var> argument with its <var>type</var> argument with a <a href="http://www.lispworks.com/documentation/HyperSpec/Body/s_the.htm" target="_blank">the</a> form.</p>
+                </section>
+
+              </article>
+
+            </section>
+
+            <section id="dictionary_maybe-type-annotate-index-form">
+
+              <h1 class="breadcrumbs-bar">
+                <span class="section-relative-nav">
+                  <a href="#dictionary_maybe-type-annotate-index-form" class="anchor">⚓</a>
+                </span>
+                <span class="breadcrumbs">
+                  <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
+                  <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_optimization">Optimization</a></span>
+                  <span class="crumb"><span class="s"> » </span><a class="here">maybe-type-annotate-index-form</a></span>
+                </span>
+              </h1>
+
+              <article class="function definition">
+
+                <h1><span class="type">Function</span> <span class="name self">jumpcase:maybe-type-annotate-index-form</span></h1>
+
+                <p class="args-and-retvals"><var>index-form</var> <var>case-count</var> =&gt; <var>maybe-type-annotated-index-form</var></p>
+
+                <section class="arguments-and-values">
+                  <h1>Arguments and Values</h1>
+                  <ul>
+                    <li><var>index-form</var> -- A form.</li>
+                    <li><var>case-count</var> -- A non-negative integer.</li>
+                    <li><var>maybe-type-annotated-index-form</var> -- A form.</li>
+                  </ul>
+                </section>
+
+                <section class="description">
+                  <h1>Description</h1>
+                  <p>If <code class="relevant"><a href="#dictionary_*type-annotate-index-form*">jumpcase:*type-annotate-index-form*</a></code> is true, returns <code>(the (<code class="relevant"><a href="#dictionary_index">jumpcase:index</a></code> <var>case-count</var>) <var>index-form</var>), else returns <var>index-form</var></code>.</p>
+                  <p>Notably used by <code class="relevant"><a href="#dictionary_expand-ejumpcase-linear">jumpcase:expand-ejumpcase-linear</a></code>.</p>
+                </section>
+
+              </article>
+
+            </section>
+
+            <section id="dictionary_*precompute-constant-index*">
+
+              <h1 class="breadcrumbs-bar">
+                <span class="section-relative-nav">
+                  <a href="#dictionary_*precompute-constant-index*" class="anchor">⚓</a>
+                </span>
+                <span class="breadcrumbs">
+                  <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
+                  <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_optimization">Optimization</a></span>
+                  <span class="crumb"><span class="s"> » </span><a class="here">*precompute-constant-index*</a></span>
+                </span>
+              </h1>
+
+              <article class="variable definition">
+
+                <h1><span class="type">Variable</span> <span class="name self">jumpcase:*precompute-constant-index*</span></h1>
+
+                <section class="description">
+                  <h1>Description</h1>
+                  <p>This generalized boolean, which defaults to true, indicates whether or not the function returned by <code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code> should evaluate its <var>index-form</var> argument if it is known to be a constant form as determined by <a href="http://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm" target="_blank">constantp</a>.</p>
+                </section>
+
+              </article>
+
+            </section>
+
+            <section id="dictionary_*preselect-case*">
+
+              <h1 class="breadcrumbs-bar">
+                <span class="section-relative-nav">
+                  <a href="#dictionary_*preselect-case*" class="anchor">⚓</a>
+                </span>
+                <span class="breadcrumbs">
+                  <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
+                  <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_optimization">Optimization</a></span>
+                  <span class="crumb"><span class="s"> » </span><a class="here">*preselect-case*</a></span>
+                </span>
+              </h1>
+
+              <article class="variable definition">
+
+                <h1><span class="type">Variable</span> <span class="name self">jumpcase:*preselect-case*</span></h1>
+
+                <section class="description">
+                  <h1>Description</h1>
+                  <p>This generalized boolean, which defaults to true, indicates whether or not the function returned by <code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code> should simply return the matching <var>case</var> form if the <var>index-form</var> is a known integer that is valid according to <var>case-count</var>.</p>
+                </section>
+
+              </article>
+
+            </section>
+
+            <section id="dictionary_make-standard-optimizations-wrapper">
+
+              <h1 class="breadcrumbs-bar">
+                <span class="section-relative-nav">
+                  <a href="#dictionary_make-standard-optimizations-wrapper" class="anchor">⚓</a>
+                </span>
+                <span class="breadcrumbs">
+                  <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
+                  <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_optimization">Optimization</a></span>
+                  <span class="crumb"><span class="s"> » </span><a class="here">make-standard-optimizations-wrapper</a></span>
+                </span>
+              </h1>
+
+              <article class="function definition">
+
+                <h1><span class="type">Function</span> <span class="name self">jumpcase:make-standard-optimizations-wrapper</span></h1>
+
+                <p class="args-and-retvals"><var>ejumpcase-expander</var> &amp;key <var>make-vectorizing-wrapper</var> =&gt; <var>enhanced-ejumpcase-expander</var></p>
+
+                <section class="arguments-and-values">
+                  <h1>Arguments and Values</h1>
+                  <ul>
+                    <li><var>ejumpcase-expander</var> -- An <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a>.</li>
+                    <li><var>make-vectorizing-wrapper</var> -- A function designator. The default is <code class="relevant"><a href="#dictionary_make-standard-vectorizing-wrapper">jumpcase:make-standard-vectorizing-wrapper</a></code>.</li>
+                    <li><var>enhanced-ejumpcase-expander</var> -- An <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a>.</li>
+                  </ul>
+                </section>
+
+                <section class="description">
+                  <h1>Description</h1>
+                  <p>This function conveniently wraps some "standard" optimizations around <var>ejumpcase-expander</var>.</p>
+                  <p><var>make-vectorizing-wrapper</var> is called with <var>ejumpcase-expander</var> to produce <var>vectorizing-ejumpcase-expander</var>.</p>
+                  <p><var>enhanced-ejumpcase-expander</var> operates in 3 stages, in order. Previous stages affect later stages.</p>
+                  <p>In the first stage, <var>index-form</var> is precomputed if <code class="relevant"><a href="#dictionary_*precompute-constant-index*">jumpcase:*precompute-constant-index*</a></code> is true and <a href="http://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm" target="_blank">constantp</a> determines <var>index-form</var> to be a constant.</p>
+                  <p>In the second stage, if <code class="relevant"><a href="#dictionary_*preselect-case*">jumpcase:*preselect-case*</a></code> is true and <var>index-form</var> is a known integer that is valid according to <var>case-count</var>, then the matching <var>case</var> is immediately returned and the <var>vectorizing-ejumpcase-expander</var> will not be called.</p>
+                  <p>In the third stage, the <var>vectorizing-ejumpcase-expander</var> is called.</p>
+                  <p>Further standard optimizations may be defined in the future.</p>
+                </section>
+
+              </article>
+
+            </section>
+
+            <section id="dictionary_internals-api_optimization_vectorization">
+
+              <h1 class="breadcrumbs-bar">
+                <span class="section-relative-nav">
+                  <a href="#dictionary_internals-api_optimization_vectorization" class="anchor">⚓</a>
+                </span>
+                <span class="breadcrumbs">
+                  <a href="#dictionary">Dictionary</a>
+                  <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api">Internals API</a></span>
+                  <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_optimization">Optimization</a></span>
+                  <span class="crumb"><span class="s"> » </span><a class="here">Vectorization</a></span>
+                </span>
+              </h1>
+
+              <nav class="tabs">
+              <ul>
+                <li><a href="#dictionary_*vectorize*"><span class="type">Variable</span> <code>*vectorize*</code></a></li>
+                <li><a href="#dictionary_*vectorization-threshold*"><span class="type">Variable</span> <code>*vectorization-threshold*</code></a></li>
+                <li><a href="#dictionary_*vectorization-threshold-function*"><span class="type">Variable</span> <code>*vectorization-threshold-function*</code></a></li>
+                <li><a href="#dictionary_standard-vectorization-threshold"><span class="type">Function</span> <code>standard-vectorization-threshold</code></a></li>
+                <li><a href="#dictionary_make-standard-vectorizing-wrapper"><span class="type">Function</span> <code>make-standard-vectorizing-wrapper</code></a></li>
+              </ul>
+            </nav>
+
+              <p>In a perfect world, all Common Lisp implementations would export a O(1) jump table primitive, and trivial-jumptables would integrate with all of them.</p>
+              <p>In a less than perfect world, even on unsupported implementations where we have to fall back to O(log(n)) in the general case, we can still get O(1) dispatch when all cases are constant by evaluating all the values into a vector at compile-time. We can also achieve similar performance when only <em>most</em> cases are constant, falling back to O(log(n)) (where <var>n</var> is the number of <em>non-constant</em> cases) when we hit a non-constant case.</p>
+              <p>(Note that "vectorization" is a bit of a misnomer, as it generally refers to a different technique, but we'll roll with it.)</p>
+
+              <section id="dictionary_*vectorize*">
+
+                <h1 class="breadcrumbs-bar">
+                  <span class="section-relative-nav">
+                    <a href="#dictionary_*vectorize*" class="anchor">⚓</a>
+                  </span>
+                  <span class="breadcrumbs">
+                    <a href="#dictionary_internals-api_optimization" class="ellipsis">...<sub>3</sub></a>
+                    <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_optimization_vectorization">Vectorization</a></span>
+                    <span class="crumb"><span class="s"> » </span><a class="here">*vectorize*</a></span>
+                  </span>
+                </h1>
+
+                <article class="variable definition">
+
+                  <h1><span class="type">Variable</span> <span class="name self">jumpcase:*vectorize*</span></h1>
+
+                  <section class="description">
+                    <h1>Description</h1>
+                    <p>This generalized boolean, which defaults to false on supported (native O(1)) implementations and to true on unsupported (portable O(log(n))) implementations, indicates whether or not the <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a> returned by <code class="relevant"><a href="#dictionary_make-standard-vectorizing-wrapper">jumpcase:make-standard-vectorizing-wrapper</a></code> should perform vectorization when appropriate.</p>
+                  </section>
+
+                </article>
+
               </section>
 
-              <section class="description">
-                <h1>Description</h1>
-                <p>A type <code>(<code class="relevant">jumpcase:index</code> <var>case-count</var>)</code> expands to type <code>(<a href="http://www.lispworks.com/documentation/HyperSpec/Body/t_intege.htm" target="_blank">integer</a> 0 (<var>case-count</var>))</code>.</p>
+              <section id="dictionary_*vectorization-threshold*">
+
+                <h1 class="breadcrumbs-bar">
+                  <span class="section-relative-nav">
+                    <a href="#dictionary_*vectorization-threshold*" class="anchor">⚓</a>
+                  </span>
+                  <span class="breadcrumbs">
+                    <a href="#dictionary_internals-api_optimization" class="ellipsis">...<sub>3</sub></a>
+                    <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_optimization_vectorization">Vectorization</a></span>
+                    <span class="crumb"><span class="s"> » </span><a class="here">*vectorization-threshold*</a></span>
+                  </span>
+                </h1>
+
+                <article class="variable definition">
+
+                  <h1><span class="type">Variable</span> <span class="name self">jumpcase:*vectorization-threshold*</span></h1>
+
+                  <section class="description">
+                    <h1>Description</h1>
+                    <p>A <a href="http://www.lispworks.com/documentation/HyperSpec/Body/t_real.htm" target="_blank">real</a> between 0 and 1 inclusive. It represents the minimum percentage of cases that must be constant for vectorization to be performed. The initial value is implementation-dependent.</p>
+                  </section>
+
+                </article>
+
               </section>
 
-            </article>
+              <section id="dictionary_*vectorization-threshold-function*">
+
+                <h1 class="breadcrumbs-bar">
+                  <span class="section-relative-nav">
+                    <a href="#dictionary_*vectorization-threshold-function*" class="anchor">⚓</a>
+                  </span>
+                  <span class="breadcrumbs">
+                    <a href="#dictionary_internals-api_optimization" class="ellipsis">...<sub>3</sub></a>
+                    <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_optimization_vectorization">Vectorization</a></span>
+                    <span class="crumb"><span class="s"> » </span><a class="here">*vectorization-threshold-function*</a></span>
+                  </span>
+                </h1>
+
+                <article class="variable definition">
+
+                  <h1><span class="type">Variable</span> <span class="name self">jumpcase:*vectorization-threshold-function*</span></h1>
+
+                  <section class="description">
+                    <h1>Description</h1>
+                    <p>A function designator. The initial value is <code class="relevant"><a href="#dictionary_standard-vectorization-threshold">jumpcase:standard-vectorization-threshold</a></code>.</p>
+                  </section>
+
+                </article>
+
+              </section>
+
+              <section id="dictionary_standard-vectorization-threshold">
+
+                <h1 class="breadcrumbs-bar">
+                  <span class="section-relative-nav">
+                    <a href="#dictionary_standard-vectorization-threshold" class="anchor">⚓</a>
+                  </span>
+                  <span class="breadcrumbs">
+                    <a href="#dictionary_internals-api" class="ellipsis">...<sub>3</sub></a>
+                    <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_optimization_vectorization">Vectorization</a></span>
+                    <span class="crumb"><span class="s"> » </span><a class="here">standard-vectorization-threshold</a></span>
+                  </span>
+                </h1>
+
+                <article class="function definition">
+
+                  <h1><span class="type">Function</span> <span class="name self">jumpcase:standard-vectorization-threshold</span></h1>
+
+                  <p class="args-and-retvals"><var>case-count</var> =&gt; <var>threshold</var></p>
+
+                  <section class="arguments-and-values">
+                    <h1>Arguments and Values</h1>
+                    <ul>
+                      <li><var>case-count</var> -- The number of cases to produce a threshold for.</li>
+                      <li><var>threshold</var> -- A non-negative integer no larger than <var>case-count</var>. The minimum number of cases that must be constant for vectorization to be performed.</li>
+                    </ul>
+                  </section>
+
+                  <section class="description">
+                    <h1>Description</h1>
+                    <p>This function is the initial value of <code class="relevant"><a href="#dictionary_*vectorization-threshold-function*">jumpcase:*vectorization-threshold-function*</a></code>.</p>
+                    <p>This function returns the result of multiplying the <code class="relevant"><a href="#dictionary_*vectorization-threshold*">jumpcase:*vectorization-threshold*</a></code> by the <var>case-count</var>, <a href="http://www.lispworks.com/documentation/HyperSpec/Body/f_floorc.htm" target="_blank">round</a>ed to the nearest integer.</p>
+                  </section>
+
+                </article>
+
+              </section>
+
+              <section id="dictionary_make-standard-vectorizing-wrapper">
+
+                <h1 class="breadcrumbs-bar">
+                  <span class="section-relative-nav">
+                    <a href="#dictionary_make-standard-vectorizing-wrapper" class="anchor">⚓</a>
+                  </span>
+                  <span class="breadcrumbs">
+                    <a href="#dictionary_internals-api" class="ellipsis">...<sub>3</sub></a>
+                    <span class="crumb"><span class="s"> » </span><a href="#dictionary_internals-api_optimization_vectorization">Vectorization</a></span>
+                    <span class="crumb"><span class="s"> » </span><a class="here">make-standard-vectorizing-wrapper</a></span>
+                  </span>
+                </h1>
+
+                <article class="function definition">
+
+                  <h1><span class="type">Function</span> <span class="name self">jumpcase:make-standard-vectorizing-wrapper</span></h1>
+
+                  <p class="args-and-retvals"><var>ejumpcase-expander</var> &amp;key <var>threshold-function</var> =&gt; <var>enhanced-ejumpcase-expander</var></p>
+
+                  <section class="arguments-and-values">
+                    <h1>Arguments and Values</h1>
+                    <ul>
+                      <li><var>ejumpcase-expander</var> -- An <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a>.</li>
+                      <li><var>threshold-function</var> -- A function designator. The default is a function that calls the value of <code class="relevant"><a href="#dictionary_*vectorization-threshold-function*">jumpcase:*vectorization-threshold-function*</a></code> with the <var>case-count</var> that it received as argument.</li>
+                      <li><var>enhanced-ejumpcase-expander</var> -- An <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a>.</li>
+                    </ul>
+                  </section>
+
+                  <section class="description">
+                    <h1>Description</h1>
+                    <p><var>enhanced-ejumpcase-expander</var> is a function that performs vectorization if appropriate, else it just forwards all its arguments to <var>ejumpcase-expander</var> and returns what it returns.</p>
+                    <p>To determine which of no vectorization, full vectorization or partial vectorization is performed, find the first match through the following list of possibilities:</p>
+                    <ol>
+                      <li>1. If <code class="relevant"><a href="#dictionary_*vectorize*">jumpcase:*vectorize*</a></code> is false or <var>case-count</var> is smaller than 2, then no vectorization is performed.</li>
+                      <li>2. If all <var>cases</var> are constant, then full vectorization is performed.</li>
+                      <li>3. If the number of constant <var>cases</var> is smaller than the result of calling <var>threshold-function</var> with <var>case-count</var>, then no vectorization is performed, else partial vectorization is performed.</li>
+                    </ol>
+                    <p>Full vectorization means that we simply evaluate all the <var>cases</var> (which are all constant) into a vector at compile-time, and so at runtime we just need to return the value at the given <var>index</var>.</p>
+                    <p>Partial vectorization is similar, except that for the non-constant <var>cases</var> the vector holds a distinguished kind of value that points to a new <var>index</var> which will be used to discriminate among the non-constant <var>cases</var> using the <var>ejumpcase-expander</var>.</p>
+                  </section>
+
+                </article>
+
+              </section>
+
+              <nav class="end-of-section-indicator">
+                <a href="#dictionary_internals-api_optimization_vectorization">
+                  "<span>Vectorization</span>" end.
+                </a>
+              </nav>
+
+            </section>
+
+            <nav class="end-of-section-indicator">
+              <a href="#dictionary_internals-api_optimization">
+                "<span>Optimization</span>" end.
+              </a>
+            </nav>
 
           </section>
 
-          <section id="dictionary_*type-annotate-index-form*">
-
-            <h1 class="breadcrumbs-bar">
-              <span class="section-relative-nav">
-                <a href="#dictionary_*type-annotate-index-form*" class="anchor">⚓</a>
-              </span>
-              <span class="breadcrumbs">
-                <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
-                <span class="crumb"><span class="s"> » </span><a class="here">*type-annotate-index-form*</a></span>
-              </span>
-            </h1>
-
-            <article class="variable definition">
-
-              <h1><span class="type">Variable</span> <span class="name self">jumpcase:*type-annotate-index-form*</span></h1>
-
-              <section class="description">
-                <h1>Description</h1>
-                <p>This generalized boolean, which defaults to true, indicates whether or not <code class="relevant"><a href="#dictionary_maybe-type-annotate-index-form">jumpcase:maybe-type-annotate-index-form</a></code> should annotate its <var>index-form</var> argument with its <var>type</var> argument with a <a href="http://www.lispworks.com/documentation/HyperSpec/Body/s_the.htm">the</a> form.</p>
-              </section>
-
-            </article>
-
-          </section>
-
-          <section id="dictionary_maybe-type-annotate-index-form">
-
-            <h1 class="breadcrumbs-bar">
-              <span class="section-relative-nav">
-                <a href="#dictionary_maybe-type-annotate-index-form" class="anchor">⚓</a>
-              </span>
-              <span class="breadcrumbs">
-                <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
-                <span class="crumb"><span class="s"> » </span><a class="here">maybe-type-annotate-index-form</a></span>
-              </span>
-            </h1>
-
-            <article class="function definition">
-
-              <h1><span class="type">Function</span> <span class="name self">jumpcase:maybe-type-annotate-index-form</span></h1>
-
-              <p class="args-and-retvals"><var>index-form</var> <var>case-count</var> =&gt; <var>maybe-type-annotated-index-form</var></p>
-
-              <section class="arguments-and-values">
-                <h1>Arguments and Values</h1>
-                <ul>
-                  <li><var>index-form</var> -- A form.</li>
-                  <li><var>case-count</var> -- A non-negative integer.</li>
-                  <li><var>maybe-type-annotated-index-form</var> -- A form.</li>
-                </ul>
-              </section>
-
-              <section class="description">
-                <h1>Description</h1>
-                <p>If <code class="relevant"><a href="#dictionary_*type-annotate-index-form*">jumpcase:*type-annotate-index-form*</a></code> is true, returns <code>(the (jumpcase:index <var>case-count</var>) <var>index-form</var>), else returns <var>index-form</var></code>.</p>
-                <p>Notably used by <code class="relevant"><a href="#dictionary_expand-ejumpcase-linear">jumpcase:expand-ejumpcase-linear</a></code>.</p>
-              </section>
-
-            </article>
-
-          </section>
-
-          <section id="dictionary_*precompute-constant-index*">
-
-            <h1 class="breadcrumbs-bar">
-              <span class="section-relative-nav">
-                <a href="#dictionary_*precompute-constant-index*" class="anchor">⚓</a>
-              </span>
-              <span class="breadcrumbs">
-                <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
-                <span class="crumb"><span class="s"> » </span><a class="here">*precompute-constant-index*</a></span>
-              </span>
-            </h1>
-
-            <article class="variable definition">
-
-              <h1><span class="type">Variable</span> <span class="name self">jumpcase:*precompute-constant-index*</span></h1>
-
-              <section class="description">
-                <h1>Description</h1>
-                <p>This generalized boolean, which defaults to true, indicates whether or not the function returned by <code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code> should evaluate its <var>index-form</var> argument if it is known to be a constant form as determined by <a href="http://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm" target="_blank">constantp</a>.</p>
-              </section>
-
-            </article>
-
-          </section>
-
-          <section id="dictionary_*preselect-case*">
-
-            <h1 class="breadcrumbs-bar">
-              <span class="section-relative-nav">
-                <a href="#dictionary_*preselect-case*" class="anchor">⚓</a>
-              </span>
-              <span class="breadcrumbs">
-                <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
-                <span class="crumb"><span class="s"> » </span><a class="here">*preselect-case*</a></span>
-              </span>
-            </h1>
-
-            <article class="variable definition">
-
-              <h1><span class="type">Variable</span> <span class="name self">jumpcase:*preselect-case*</span></h1>
-
-              <section class="description">
-                <h1>Description</h1>
-                <p>This generalized boolean, which defaults to true, indicates whether or not the function returned by <code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code> should simply return the matching <var>case</var> form if the <var>index-form</var> is a known integer that is valid according to <var>case-count</var>.</p>
-              </section>
-
-            </article>
-
-          </section>
-
-          <section id="dictionary_make-standard-optimizations-wrapper">
-
-            <h1 class="breadcrumbs-bar">
-              <span class="section-relative-nav">
-                <a href="#dictionary_make-standard-optimizations-wrapper" class="anchor">⚓</a>
-              </span>
-              <span class="breadcrumbs">
-                <a href="#dictionary_internals-api" class="ellipsis">...<sub>2</sub></a>
-                <span class="crumb"><span class="s"> » </span><a class="here">make-standard-optimizations-wrapper</a></span>
-              </span>
-            </h1>
-
-            <article class="function definition">
-
-              <h1><span class="type">Function</span> <span class="name self">jumpcase:make-standard-optimizations-wrapper</span></h1>
-
-              <p class="args-and-retvals"><var>ejumpcase-expander</var> =&gt; <var>enhanced-ejumpcase-expander</var></p>
-
-              <section class="arguments-and-values">
-                <h1>Arguments and Values</h1>
-                <ul>
-                  <li><var>ejumpcase-expander</var> -- An <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a>.</li>
-                  <li><var>enhanced-ejumpcase-expander</var> -- An <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a>.</li>
-                </ul>
-              </section>
-
-              <section class="description">
-                <h1>Description</h1>
-                <p>This function conveniently wraps some "standard" optimizations around <var>ejumpcase-expander</var>.</p>
-                <p><var>enhanced-ejumpcase-expander</var> operates in 3 stages, in order. Previous stages affect later stages.</p>
-                <p>In the first stage, <var>index-form</var> is precomputed if <code class="relevant"><a href="#dictionary_*precompute-constant-index*">jumpcase:*precompute-constant-index*</a></code> is true and <a href="http://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm" target="_blank">constantp</a> determines <var>index-form</var> to be a constant.</p>
-                <p>In the second stage, if <code class="relevant"><a href="#dictionary_*preselect-case*">jumpcase:*preselect-case*</a></code> is true and <var>index-form</var> is a known integer that is valid according to <var>case-count</var>, then the matching <var>case</var> is immediately returned and the <var>ejumpcase-expander</var> will not be called.</p>
-                <p>In the third stage, the <var>ejumpcase-expander</var> is called.</p>
-                <p>Further standard optimizations may be defined in the future.</p>
-              </section>
-
-            </article>
-
-          </section>
+          <nav class="end-of-section-indicator">
+            <a href="#dictionary_internals-api">
+              "<span>Internals API</span>" end.
+            </a>
+          </nav>
 
         </section>
+
+        <nav class="end-of-section-indicator">
+          <a href="#dictionary">
+            "<span>Dictionary</span>" end.
+          </a>
+        </nav>
 
       </section>
 
