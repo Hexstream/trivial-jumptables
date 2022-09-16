@@ -89,8 +89,17 @@
 
       <section id="introduction">
 
-        <p><dfn><code class="relevant">trivial-jumptables</code></dfn> provides efficient O(1) jump tables on supported<br />Common Lisp implementations and falls back to O(log(n)) on others.</p>
-        <p>Important <a href="#dictionary_internals-api_optimization">optimizations</a> are performed even on unsupported implementations,<br />notably "<a href="#dictionary_internals-api_optimization_vectorization">vectorization</a>" which allows O(1) dispatch if all cases are constant.</p>
+        <p>
+          <dfn><code class="relevant">trivial-jumptables</code></dfn> provides efficient O(1) jump tables on supported
+          <br />
+          Common Lisp implementations and falls back to O(log(n)) on others.
+        </p>
+
+        <p>
+          Important <a href="#dictionary_internals-api_optimization">optimizations</a> are performed even on unsupported implementations,
+          <br />
+          notably "<a href="#dictionary_internals-api_optimization_vectorization">vectorization</a>" which allows O(1) dispatch if all cases are constant.
+        </p>
 
       </section>
 
