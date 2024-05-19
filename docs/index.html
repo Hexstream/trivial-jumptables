@@ -886,10 +886,10 @@
                     <h1>Description</h1>
                     <p><var>enhanced-ejumpcase-expander</var> is a function that performs vectorization if appropriate, else it just forwards all its arguments to <var>ejumpcase-expander</var> and returns what it returns.</p>
                     <p>To determine which of no vectorization, full vectorization or partial vectorization is performed, find the first match through the following list of possibilities:</p>
-                    <ol>
-                      <li>1. If <code class="relevant"><a href="#dictionary_*vectorize*">jumpcase:*vectorize*</a></code> is false or <var>case-count</var> is smaller than 2, then no vectorization is performed.</li>
-                      <li>2. If all <var>cases</var> are constant, then full vectorization is performed.</li>
-                      <li>3. If the number of constant <var>cases</var> is smaller than the result of calling <var>threshold-function</var> with <var>case-count</var>, then no vectorization is performed, else partial vectorization is performed.</li>
+                    <ol class="list">
+                      <li>If <code class="relevant"><a href="#dictionary_*vectorize*">jumpcase:*vectorize*</a></code> is false or <var>case-count</var> is smaller than 2, then no vectorization is performed.</li>
+                      <li>If all <var>cases</var> are constant, then full vectorization is performed.</li>
+                      <li>If the number of constant <var>cases</var> is smaller than the result of calling <var>threshold-function</var> with <var>case-count</var>, then no vectorization is performed, else partial vectorization is performed.</li>
                     </ol>
                     <p>Full vectorization means that we simply evaluate all the <var>cases</var> (which are all constant) into a vector at compile-time, and so at runtime we just need to return the value at the given <var>index</var>.</p>
                     <p>Partial vectorization is similar, except that for the non-constant <var>cases</var> the vector holds a distinguished kind of value that points to a new <var>index</var> which will be used to discriminate among the non-constant <var>cases</var> using the <var>ejumpcase-expander</var>.</p>
