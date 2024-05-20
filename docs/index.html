@@ -130,7 +130,7 @@
           </span>
         </h1>
 
-        <p>If you need a jump table in Common Lisp, the naive way is to just expand to the equivalent <a href="http://www.lispworks.com/documentation/HyperSpec/Body/m_case_.htm" target="_blank">ecase</a> form:</p>
+        <p>If you need a jump table in Common Lisp, the naive way is to just expand to the equivalent <a href="https://www.lispworks.com/documentation/HyperSpec/Body/m_case_.htm" target="_blank">ecase</a> form:</p>
 
         <div class="scroll">
 
@@ -266,8 +266,8 @@
               <h1>Description</h1>
               <p>First, <var>index-form</var> is evaluated to produce <var>index</var>.</p>
               <p>If <var>index</var> is a non-negative integer below the number of <var>cases</var> provided, then the matching <var>case</var> form is executed and <code class="relevant">ejumpcase</code> returns any values it returns.</p>
-              <p>Else, <var>index</var> is invalid so a <a href="http://www.lispworks.com/documentation/HyperSpec/Body/e_tp_err.htm" target="_blank">type-error</a> is signaled.</p>
-              <p><code class="relevant">ejumpcase</code> is semantically equivalent to the corresponding <a href="http://www.lispworks.com/documentation/HyperSpec/Body/m_case_.htm" target="_blank">ecase</a> form, but more efficient. (Typically <em>drastically</em> more efficient if there are many <var>cases</var>.)</p>
+              <p>Else, <var>index</var> is invalid so a <a href="https://www.lispworks.com/documentation/HyperSpec/Body/e_tp_err.htm" target="_blank">type-error</a> is signaled.</p>
+              <p><code class="relevant">ejumpcase</code> is semantically equivalent to the corresponding <a href="https://www.lispworks.com/documentation/HyperSpec/Body/m_case_.htm" target="_blank">ecase</a> form, but more efficient. (Typically <em>drastically</em> more efficient if there are many <var>cases</var>.)</p>
 
               <div class="scroll">
 
@@ -351,7 +351,7 @@
 
                 <section class="description">
                   <h1>Description</h1>
-                  <p>An <a href="http://www.lispworks.com/documentation/HyperSpec/Body/03_aad.htm" target="_blank">environment object</a>. The initial value is <code>nil</code>, designating the <a href="http://www.lispworks.com/documentation/HyperSpec/Body/03_aaca.htm" target="_blank">null lexical environment</a>.</p>
+                  <p>An <a href="https://www.lispworks.com/documentation/HyperSpec/Body/03_aad.htm" target="_blank">environment object</a>. The initial value is <code>nil</code>, designating the <a href="https://www.lispworks.com/documentation/HyperSpec/Body/03_aaca.htm" target="_blank">null lexical environment</a>.</p>
                   <p>Bound by <code class="relevant"><a href="#dictionary_ejumpcase">ejumpcase</a></code> before calling <code class="relevant"><a href="#dictionary_*ejumpcase-expander*">jumpcase:*ejumpcase-expander*</a></code>.</p>
                   <p>Very few <a href="#dictionary_*ejumpcase-expander*">ejumpcase expanders</a> need to inspect this value, so it's nice not to have to pass it explicitly through all of them.</p>
                 </section>
@@ -412,7 +412,7 @@
 
                 <section class="description">
                   <h1>Description</h1>
-                  <p>This <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a> simply expands to an <a href="http://www.lispworks.com/documentation/HyperSpec/Body/m_case_.htm" target="_blank">ecase</a> form.</p>
+                  <p>This <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a> simply expands to an <a href="https://www.lispworks.com/documentation/HyperSpec/Body/m_case_.htm" target="_blank">ecase</a> form.</p>
 
                   <div class="scroll">
 
@@ -449,7 +449,7 @@
 
                 <section class="description">
                   <h1>Description</h1>
-                  <p>This <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a> returns an <var>expansion</var> that implements a binary search with a tree of <a href="http://www.lispworks.com/documentation/HyperSpec/Body/s_if.htm" target="_blank">if</a> forms for drastically improved performance over <code class="relevant"><a href="#dictionary_expand-ejumpcase-linear">jumpcase:expand-ejumpcase-linear</a></code> when there are more than just a few <var>cases</var>.</p>
+                  <p>This <a href="#dictionary_*ejumpcase-expander*">ejumpcase expander</a> returns an <var>expansion</var> that implements a binary search with a tree of <a href="https://www.lispworks.com/documentation/HyperSpec/Body/s_if.htm" target="_blank">if</a> forms for drastically improved performance over <code class="relevant"><a href="#dictionary_expand-ejumpcase-linear">jumpcase:expand-ejumpcase-linear</a></code> when there are more than just a few <var>cases</var>.</p>
 
                   <div class="scroll">
 
@@ -545,7 +545,7 @@
 
                 <section class="description">
                   <h1>Description</h1>
-                  <p>A type <code>(<code class="relevant">jumpcase:index</code> <var>case-count</var>)</code> expands to type <code>(<a href="http://www.lispworks.com/documentation/HyperSpec/Body/t_intege.htm" target="_blank">integer</a> 0 (<var>case-count</var>))</code>.</p>
+                  <p>A type <code>(<code class="relevant">jumpcase:index</code> <var>case-count</var>)</code> expands to type <code>(<a href="https://www.lispworks.com/documentation/HyperSpec/Body/t_intege.htm" target="_blank">integer</a> 0 (<var>case-count</var>))</code>.</p>
                 </section>
 
               </article>
@@ -571,7 +571,7 @@
 
                 <section class="description">
                   <h1>Description</h1>
-                  <p>This generalized boolean, which defaults to true, indicates whether or not <code class="relevant"><a href="#dictionary_maybe-type-annotate-index-form">jumpcase:maybe-type-annotate-index-form</a></code> should annotate its <var>index-form</var> argument with its <var>type</var> argument with a <a href="http://www.lispworks.com/documentation/HyperSpec/Body/s_the.htm" target="_blank">the</a> form.</p>
+                  <p>This generalized boolean, which defaults to true, indicates whether or not <code class="relevant"><a href="#dictionary_maybe-type-annotate-index-form">jumpcase:maybe-type-annotate-index-form</a></code> should annotate its <var>index-form</var> argument with its <var>type</var> argument with a <a href="https://www.lispworks.com/documentation/HyperSpec/Body/s_the.htm" target="_blank">the</a> form.</p>
                 </section>
 
               </article>
@@ -635,7 +635,7 @@
 
                 <section class="description">
                   <h1>Description</h1>
-                  <p>This generalized boolean, which defaults to true, indicates whether or not the function returned by <code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code> should evaluate its <var>index-form</var> argument if it is known to be a constant form as determined by <a href="http://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm" target="_blank">constantp</a>.</p>
+                  <p>This generalized boolean, which defaults to true, indicates whether or not the function returned by <code class="relevant"><a href="#dictionary_make-standard-optimizations-wrapper">jumpcase:make-standard-optimizations-wrapper</a></code> should evaluate its <var>index-form</var> argument if it is known to be a constant form as determined by <a href="https://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm" target="_blank">constantp</a>.</p>
                 </section>
 
               </article>
@@ -701,7 +701,7 @@
                   <p>This function conveniently wraps some "standard" optimizations around <var>ejumpcase-expander</var>.</p>
                   <p><var>make-vectorizing-wrapper</var> is called with <var>ejumpcase-expander</var> to produce <var>vectorizing-ejumpcase-expander</var>.</p>
                   <p><var>enhanced-ejumpcase-expander</var> operates in 3 stages, in order. Previous stages affect later stages.</p>
-                  <p>In the first stage, <var>index-form</var> is precomputed if <code class="relevant"><a href="#dictionary_*precompute-constant-index*">jumpcase:*precompute-constant-index*</a></code> is true and <a href="http://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm" target="_blank">constantp</a> determines <var>index-form</var> to be a constant.</p>
+                  <p>In the first stage, <var>index-form</var> is precomputed if <code class="relevant"><a href="#dictionary_*precompute-constant-index*">jumpcase:*precompute-constant-index*</a></code> is true and <a href="https://www.lispworks.com/documentation/HyperSpec/Body/f_consta.htm" target="_blank">constantp</a> determines <var>index-form</var> to be a constant.</p>
                   <p>In the second stage, if <code class="relevant"><a href="#dictionary_*preselect-case*">jumpcase:*preselect-case*</a></code> is true and <var>index-form</var> is a known integer that is valid according to <var>case-count</var>, then the matching <var>case</var> is immediately returned and the <var>vectorizing-ejumpcase-expander</var> will not be called.</p>
                   <p>In the third stage, the <var>vectorizing-ejumpcase-expander</var> is called.</p>
                   <p>Further standard optimizations may be defined in the future.</p>
@@ -784,7 +784,7 @@
 
                   <section class="description">
                     <h1>Description</h1>
-                    <p>A <a href="http://www.lispworks.com/documentation/HyperSpec/Body/t_real.htm" target="_blank">real</a> between 0 and 1 inclusive. It represents the minimum percentage of cases that must be constant for vectorization to be performed. The initial value is implementation-dependent.</p>
+                    <p>A <a href="https://www.lispworks.com/documentation/HyperSpec/Body/t_real.htm" target="_blank">real</a> between 0 and 1 inclusive. It represents the minimum percentage of cases that must be constant for vectorization to be performed. The initial value is implementation-dependent.</p>
                   </section>
 
                 </article>
@@ -847,7 +847,7 @@
                   <section class="description">
                     <h1>Description</h1>
                     <p>This function is the initial value of <code class="relevant"><a href="#dictionary_*vectorization-threshold-function*">jumpcase:*vectorization-threshold-function*</a></code>.</p>
-                    <p>This function returns the result of multiplying the <code class="relevant"><a href="#dictionary_*vectorization-threshold*">jumpcase:*vectorization-threshold*</a></code> by the <var>case-count</var>, <a href="http://www.lispworks.com/documentation/HyperSpec/Body/f_floorc.htm" target="_blank">round</a>ed to the nearest integer.</p>
+                    <p>This function returns the result of multiplying the <code class="relevant"><a href="#dictionary_*vectorization-threshold*">jumpcase:*vectorization-threshold*</a></code> by the <var>case-count</var>, <a href="https://www.lispworks.com/documentation/HyperSpec/Body/f_floorc.htm" target="_blank">round</a>ed to the nearest integer.</p>
                   </section>
 
                 </article>
